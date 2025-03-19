@@ -67,33 +67,6 @@
     path: "{{ kafka_log_dir }}"
     state: directory
 
-- name: Check if swap is enabled
-  command: swapon --show
-  register: swap_check
-  changed_when: false
-
-- name: Enable swap memory if not enabled
-  when: swap_check.stdout == ""
-  block:
-    - name: Create a 1GB swap file
-      command: fallocate -l 1G /swapfile
-
-    - name: Set permissions on swap file
-      file:
-        path: /swapfile
-        mode: '0600'
-
-    - name: Make swap file
-      command: mkswap /swapfile
-
-    - name: Enable swap file
-      command: swapon /swapfile
-
-    - name: Persist swap settings
-      lineinfile:
-        path: /etc/fstab
-        line: '/swapfile none swap sw 0 0'
-
 - name: Start Kafka
   shell: "{{ kafka_install_dir }}/kafka_2.13-{{ kafka_version }}/bin/kafka-server-start.sh -daemon {{ kafka_install_dir }}/kafka_2.13-{{ kafka_version }}/config/server.properties"
 
