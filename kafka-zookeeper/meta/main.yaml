@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  author: Himanshu
+  description: Ansible role to install Kafka and Zookeeper.
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - kafka
+    - zookeeper
+dependencies: []

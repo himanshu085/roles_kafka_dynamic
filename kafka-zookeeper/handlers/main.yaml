@@ -1,0 +1,6 @@
+---
+- name: Restart Zookeeper
+  shell: "{{ zookeeper_install_dir }}/bin/zkServer.sh restart"
+
+- name: Restart Kafka
+  shell: "{{ kafka_install_dir }}/bin/kafka-server-start.sh -daemon {{ kafka_install_dir }}/config/server.properties"

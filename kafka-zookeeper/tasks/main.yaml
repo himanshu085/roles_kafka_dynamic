@@ -1,0 +1,107 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - openjdk-11-jdk
+      - net-tools
+    state: present
+    update_cache: yes
+
+- name: Create installation directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ zookeeper_install_dir }}"
+    - "{{ kafka_install_dir }}"
+
+- name: Download Zookeeper
+  get_url:
+    url: "{{ zookeeper_download_url }}"
+    dest: "/tmp/apache-zookeeper-{{ zookeeper_version }}-bin.tar.gz"
+
+- name: Extract Zookeeper
+  unarchive:
+    src: "/tmp/apache-zookeeper-{{ zookeeper_version }}-bin.tar.gz"
+    dest: "{{ zookeeper_install_dir }}"
+    remote_src: yes
+
+- name: Configure Zookeeper
+  copy:
+    content: |
+      tickTime=2000
+      dataDir={{ zookeeper_install_dir }}/apache-zookeeper-{{ zookeeper_version }}-bin/data
+      clientPort=2181
+      initLimit=5
+      syncLimit=2
+    dest: "{{ zookeeper_install_dir }}/apache-zookeeper-{{ zookeeper_version }}-bin/conf/zoo.cfg"
+
+- name: Start Zookeeper
+  shell: "{{ zookeeper_install_dir }}/apache-zookeeper-{{ zookeeper_version }}-bin/bin/zkServer.sh start"
+  args:
+    creates: "{{ zookeeper_install_dir }}/apache-zookeeper-{{ zookeeper_version }}-bin/data"
+
+- name: Download Kafka
+  get_url:
+    url: "{{ kafka_download_url }}"
+    dest: "/tmp/kafka_2.13-{{ kafka_version }}.tgz"
+
+- name: Extract Kafka
+  unarchive:
+    src: "/tmp/kafka_2.13-{{ kafka_version }}.tgz"
+    dest: "{{ kafka_install_dir }}"
+    remote_src: yes
+
+- name: Configure Kafka
+  copy:
+    content: |
+      broker.id=0
+      log.dirs={{ kafka_install_dir }}/kafka_2.13-{{ kafka_version }}/logs
+      zookeeper.connect=localhost:2181
+      listeners=PLAINTEXT://:9092
+      num.partitions=1
+    dest: "{{ kafka_install_dir }}/kafka_2.13-{{ kafka_version }}/config/server.properties"
+
+- name: Ensure Kafka log directory exists
+  file:
+    path: "{{ kafka_log_dir }}"
+    state: directory
+
+- name: Check if swap is enabled
+  command: swapon --show
+  register: swap_check
+  changed_when: false
+
+- name: Enable swap memory if not enabled
+  when: swap_check.stdout == ""
+  block:
+    - name: Create a 1GB swap file
+      command: fallocate -l 1G /swapfile
+
+    - name: Set permissions on swap file
+      file:
+        path: /swapfile
+        mode: '0600'
+
+    - name: Make swap file
+      command: mkswap /swapfile
+
+    - name: Enable swap file
+      command: swapon /swapfile
+
+    - name: Persist swap settings
+      lineinfile:
+        path: /etc/fstab
+        line: '/swapfile none swap sw 0 0'
+
+- name: Start Kafka
+  shell: "{{ kafka_install_dir }}/kafka_2.13-{{ kafka_version }}/bin/kafka-server-start.sh -daemon {{ kafka_install_dir }}/kafka_2.13-{{ kafka_version }}/config/server.properties"
+
+- name: Check Kafka running status
+  shell: "netstat -an | grep ':9092' || true"
+  register: kafka_port_status
+  changed_when: false
+
+- name: Display Kafka port binding status
+  debug:
+    msg: "{{ kafka_port_status.stdout }}"
