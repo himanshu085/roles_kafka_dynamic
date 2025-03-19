@@ -2,4 +2,4 @@
 - hosts: all
   become: true
   roles:
-    - /home/himanshu-parashar/demo/kafka-zookeeper
+    - /home/ubuntu/kafka-zookeeper
